@@ -227,17 +227,18 @@ class TaskService:
             status = "passed" if ctx.verification.get("passed", False) else "pending"
             audit.log_artifact(task.id, art.get("name", ""), status)
         db.commit()
-
-        run.status = RunStatus.COMPLETED
-        run.model_calls = ctx.model_calls
-        run.selected_models = [ctx.selected_model_name] if ctx.selected_model_name else []
-        run.verification_result = ctx.verification
-        db.add(run)
-        db.commit()
-
         if ctx.task_type:
             task.task_type = TaskType(ctx.task_type)
         is_done = ctx.verification.get("passed", True) or not ctx.artifacts
+
+        run.status = RunStatus.COMPLETED if is_done else RunStatus.FAILED
+        run.model_calls = ctx.model_calls
+        run.selected_models = [ctx.selected_model_name] if ctx.selected_model_name else []
+        run.verification_result = ctx.verification
+
+        db.add(run)
+        db.commit()
+
         self._update_task_status(db, task, TaskStatus.COMPLETED if is_done else TaskStatus.FAILED)
         await self.bus.publish(task.id, {"type": "done", "status": task.status.value})
 
@@ -380,9 +381,18 @@ class TaskService:
 
         # ── code handlers ────────────────────────────────────
         async def generate_code(context, detail):
-            code = await self._model_code(context)
+            code, tests = await self._model_code(context)
             context.tool_results["code"] = code
-            return {"ok": True, "code": code}
+            context.tool_results["tests"] = tests
+            ws = context.workspace_obj
+            sol = ws.dir("working") / "solution.py"
+            tst = ws.dir("working") / "test_scenario.py"
+            sol.write_text(code, encoding="utf-8")
+            tst.write_text(tests, encoding="utf-8")
+            context.artifacts = [a for a in context.artifacts if a.get("kind") != "code"]
+            context.artifacts.append({"name": "solution.py", "kind": "code", "path": str(sol)})
+            context.artifacts.append({"name": "test_scenario.py", "kind": "code", "path": str(tst)})
+            return {"ok": True, "code": code, "tests": tests}
 
         ah.register("generate_code", generate_code)
 
@@ -413,6 +423,7 @@ class TaskService:
         system: str | None = None,
         max_tokens: int | None = None,
         images: list[str] | None = None,
+        temperature: float = 0.2,
     ) -> str:
         """Invoke the selected model through the provider abstraction.
 
@@ -430,7 +441,7 @@ class TaskService:
                     prompt=prompt,
                     system=system,
                     max_tokens=max_tokens,
-                    temperature=0.2,
+                    temperature=temperature,
                     images=images,
                 )
             )
@@ -462,16 +473,57 @@ class TaskService:
         )
         return text or self._analyze(context)
 
-    async def _model_code(self, context) -> str:
+    async def _model_code(self, context) -> tuple[str, str]:
+        """Ask the coding model for a solution AND a pytest-style test set.
+
+        Returns (code, tests); the deterministic fallback covers both so the
+        sandboxed test step can always run.
+        """
         prompt = (
-            "Write a complete, standalone Python program that satisfies this request. "
-            "Return only the code, no markdown fences, no explanations.\n\n"
+            "Write Python code for the following request. Reply with ONLY the code — "
+            "no greeting, no persona text, no explanation. "
+            "Emit two fenced blocks exactly:\n\n"
+            "<SOLUTION>\n...solution code only...\n</SOLUTION>\n\n"
+            "<TESTS>\n...pytest-style test_* functions only...\n</TESTS>\n\n"
             f"Request: {context.prompt}"
         )
-        text = await self._generate(
-            context, prompt, system="You are a senior Python engineer.", max_tokens=1000
-        )
-        return text or self._default_code(context.prompt)
+        feedback = self._code_feedback(context)
+        if feedback:
+            prompt += (
+                "\n\nPrevious sandbox attempt feedback — fix the solution so this "
+                "all passes:\n" + "\n".join(feedback)
+            )
+        # Small open models occasionally emit chat chit-chat for a code prompt;
+        # retry a couple of draws before the deterministic fallback.
+        for _ in range(3):
+            text = await self._generate(
+                context, prompt, max_tokens=1200, temperature=0.1
+            )
+            if not text:
+                continue
+            code, tests = self._parse_code_response(text)
+            if code:
+                return code, tests or self._default_tests(code)
+        return self._default_code()
+
+    @staticmethod
+    def _parse_code_response(text: str) -> tuple[str, str]:
+        """Extract (code, tests) from a <SOLUTION>/<TESTS> reply."""
+        import re
+
+        sol = re.search(r"<SOLUTION>(.*?)</SOLUTION>", text, re.S)
+        ts = re.search(r"<TESTS>(.*?)</TESTS>", text, re.S)
+        code = sol.group(1).strip() if sol else ""
+        tests = ts.group(1).strip() if ts else ""
+        if not code:
+            fenced = re.findall(r"```[a-zA-Z]*\s*(.*?)```", text, re.S)
+            if fenced:
+                code = fenced[0].strip()
+                if not tests and len(fenced) > 1:
+                    tests = fenced[1].strip()
+        code = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", code).strip()
+        tests = re.sub(r"^```[a-zA-Z]*\s*|\s*```$", "", tests).strip()
+        return code, tests
 
     async def _extract_findings_vision(self, context, doc: dict) -> list[dict]:
         """Structure findings from a scanned/image document with the vision model.
@@ -697,11 +749,40 @@ class TaskService:
         return base
 
     @staticmethod
-    def _default_code(prompt: str) -> str:
-        return (
+    def _code_feedback(context: AgentContext) -> list[str]:
+        """Summarize the previous sandbox run so the model can react (observe→act)."""
+        lines: list[str] = []
+        for tag, key in (("execution of the solution", "exec_result"), ("test run", "test_result")):
+            res = context.tool_results.get(key)
+            if not isinstance(res, dict):
+                continue
+            if res.get("ok"):
+                lines.append(f"- previous {tag}: PASSED")
+            else:
+                out = (res.get("stdout") or "")[-400:] + (res.get("stderr") or "")[-200:]
+                err = res.get("error") or out or ""
+                lines.append(
+                    f"- previous {tag}: FAILED (exit {res.get('exit_code')}) -> {str(err)[:500]}"
+                )
+        return lines
+
+    @staticmethod
+    def _default_code() -> tuple[str, str]:
+        code = (
             "# Generated solution stub.\n"
             "def solve():\n"
             "    return 'implement me'\n\n"
             "if __name__ == '__main__':\n"
             "    print(solve())\n"
         )
+        return code, TaskService._default_tests(code)
+
+    @staticmethod
+    def _default_tests(code: str) -> str:
+        if "def solve" in code:
+            return (
+                "import solution\n\n"
+                "def test_solve_is_callable():\n"
+                "    assert callable(solution.solve)\n"
+            )
+        return "import solution"

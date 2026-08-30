@@ -44,3 +44,6 @@ Thumbs.db
 
 # Generated graph / caches
 graphify-out/
+
+# Docker sandbox runtime mounts
+apps/api/sandbox/_mounts/

@@ -65,16 +65,21 @@ class DockerRunner:
 
         client = self._client()
         opts = self.policy.to_docker()
+        # SDK-polymorphic: docker-py ≥7 dropped the top-level `cpus` kwarg and
+        # `host_config`; `nano_cpus`/`mem_limit`/`pids_limit`/`network_mode`
+        # as run() kwargs build the host config on both old and new SDKs.
         docker_kwargs: dict[str, Any] = {
             "image": self.policy.image,
             "command": ["python", "-c", code],
-            "remove": True,
             "detach": True,
             "network_mode": opts["network_mode"],
-            "cpus": opts["cpus"],
+            "nano_cpus": int(float(opts["cpus"]) * 1_000_000_000),
             "mem_limit": opts["mem_limit"],
             "pids_limit": opts["pids_limit"],
         }
+        # NOTE: no auto-remove here — with detach=True + remove=True the
+        # container can be garbage-collected before .logs() reads it, which
+        # surfaces as a 409 conflict. The finally block below removes it.
 
         # Mount provided files into a working directory (isolated, not host fs).
         volumes: dict[str, dict[str, str]] = {}

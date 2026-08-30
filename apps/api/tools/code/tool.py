@@ -59,12 +59,37 @@ class RunTestsTool(_CodeMixin, ToolBase):
         if not tests.strip():
             return {"ok": False, "error": "No tests provided."}
         files = {"solution.py": code, "test_scenario.py": tests}
-        # Run code import + run tests appended
+        # Import the solution first, expose its names so bare-name references
+        # work, and stub `pytest` (slim images have no pytest; we run tests via
+        # introspection instead). Then run every test_* function AND any
+        # unittest.TestCase so asserts genuinely execute. None discovered is a
+        # failure, not a pass.
         runner_code = (
-            "import sys\n"
-            "sys.path.insert(0, '/work')\n"
-            f"{tests}\n"
+            "import sys as _sys\n"
+            "import types as _types\n"
+            "_pytest = _types.ModuleType('pytest')\n"
+            "_pytest.mark = _types.SimpleNamespace()\n"
+            "_sys.modules['pytest'] = _pytest\n"
             "import solution\n"
-            "print('TESTS EXECUTED OK')"
+            "for _n in dir(solution):\n"
+            "    if not _n.startswith('__'):\n"
+            "        globals().setdefault(_n, getattr(solution, _n))\n"
+        ) + tests + (
+            "\nimport unittest as _u\n"
+            "_fns = [globals()[n] for n in list(globals()) "
+            "if n.startswith('test_') and callable(globals()[n])]\n"
+            "_cases = [v for v in list(globals().values()) "
+            "if isinstance(v, type) and issubclass(v, _u.TestCase)]\n"
+            "if not _fns and not _cases:\n"
+            "    print('ERROR: no runnable tests defined')\n"
+            "    raise SystemExit(2)\n"
+            "for _t in _fns:\n"
+            "    _t()\n"
+            "for _c in _cases:\n"
+            "    _suite = _u.defaultTestLoader.loadTestsFromTestCase(_c)\n"
+            "    _res = _u.TextTestRunner(verbosity=2, stream=_sys.stdout).run(_suite)\n"
+            "    if not _res.wasSuccessful():\n"
+            "        raise SystemExit(1)\n"
+            "print('TESTS EXECUTED OK')\n"
         )
         return self.manager.run_code_with_files(runner_code, files)

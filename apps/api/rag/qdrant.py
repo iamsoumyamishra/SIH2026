@@ -72,6 +72,22 @@ class LocalVectorStore(VectorStore):
         return len(self._vectors)
 
 
+def _as_point_id(pid: Any) -> int | str | uuid.UUID:
+    """Qdrant accepts uint or UUID point IDs (≥1.9 rejects arbitrary strings).
+
+    Turns our document IDs ("sop-001::chunk-0") into stable UUIDv5 IDs so
+    re-ingestion stays deterministic.
+    """
+    if isinstance(pid, int) or isinstance(pid, uuid.UUID):
+        return pid
+    if isinstance(pid, str):
+        try:
+            return uuid.UUID(pid)
+        except (ValueError, AttributeError):
+            return uuid.uuid5(uuid.NAMESPACE_DNS, pid)
+    return uuid.uuid5(uuid.NAMESPACE_DNS, str(pid))
+
+
 class QdrantVectorStore(VectorStore):
     def __init__(
         self,
@@ -102,9 +118,10 @@ class QdrantVectorStore(VectorStore):
     def upsert(self, points: list[dict[str, Any]]) -> None:
         pts = []
         for p in points:
+            pid = p.get("id", str(uuid.uuid4()))
             pts.append(
                 self._models.PointStruct(
-                    id=p.get("id", str(uuid.uuid4())),
+                    id=_as_point_id(pid),
                     vector=p["vector"],
                     payload=p.get("payload", {}),
                 )

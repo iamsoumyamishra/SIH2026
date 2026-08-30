@@ -126,6 +126,11 @@ class Orchestrator:
                     state.transition(AgentState.FAILED)
                 except IllegalTransitionError:
                     pass
+            context.verification = {
+                "passed": False,
+                "items": [{"type": "iteration_budget", "passed": False,
+                           "detail": "max iterations reached or plan step failed"}],
+            }
             await self._emit("FAILED", "failed", "Max iterations reached or step failure")
         return context
 
