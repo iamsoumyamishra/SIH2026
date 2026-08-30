@@ -1,6 +1,6 @@
 "use client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8787";
 
 const TOKEN_KEY = "saw_token";
 const USER_KEY = "saw_user";

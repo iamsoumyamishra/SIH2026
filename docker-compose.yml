@@ -19,7 +19,7 @@ services:
     volumes:
       - workspaces:/app/workspaces
     ports:
-      - "8000:8000"
+      - "8787:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -35,7 +35,7 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: saw-web
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8787
     ports:
       - "3000:3000"
     depends_on:

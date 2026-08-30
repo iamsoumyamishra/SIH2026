@@ -171,7 +171,7 @@ runs without requiring Postgres/Qdrant containers.
 ### 2. Run everything (recommended)
 
 ```bash
-pnpm dev        # runs FastAPI (:8000) and Next.js (:3000) together via turbo
+pnpm dev        # runs FastAPI (:8787) and Next.js (:3000) together via turbo
 ```
 
 ### 3. Run a single app
@@ -181,7 +181,7 @@ pnpm dev:web    # frontend only
 pnpm dev:api    # backend only
 ```
 
-Open http://localhost:3000 — the API is expected at http://localhost:8000
+Open http://localhost:3000 — the API is expected at http://localhost:8787
 (override with `NEXT_PUBLIC_API_URL`).
 
 ### 4. Build / check
