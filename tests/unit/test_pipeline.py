@@ -34,9 +34,14 @@ def test_digital_pdf_detected_as_text(tmp_path):
 def test_ocr_unavailable_reported_on_image(tmp_path):
     from PIL import Image
 
+    from multimodal.ocr import OcrEngine
+
     img_path = tmp_path / "blank.png"
     Image.new("RGB", (20, 20), "white").save(img_path)
     doc = DocumentPipeline().ingest(img_path)
     assert doc.content_type == "image"
     # Either OCR ran and produced text, or it reported unavailable — never crashes.
-    assert any("OCR" in w for w in doc.warnings) or doc.text
+    # With a real engine installed, a blank image may legitimately yield "" with
+    # no warning (readable OCR produced no tokens).
+    ocr_available = OcrEngine().is_available()
+    assert any("OCR" in w for w in doc.warnings) or doc.text or ocr_available

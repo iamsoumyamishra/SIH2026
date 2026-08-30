@@ -25,7 +25,7 @@
 | Backend (FastAPI) | `✓` |
 | Agent core | `✓` |
 | Model layer | `✓` |
-| Multimodal / OCR | `△` (RapidOCR swap in progress) |
+| Multimodal / OCR | `✓` |
 | RAG | `△` (local backend verified; qdrant pending) |
 | Tools + Artifacts | `✓` |
 | Sandbox | `△` (live-docker validation pending) |
@@ -56,8 +56,8 @@
 
 ### Multimodal
 - [x] PDF upload works — `✓` (pypdfium2)
-- [ ] Scanned PDF OCR works — `△` (RapidOCR engine verifified on rendered pages; PaddleOCR replaced)
-- [ ] Image understanding works — `△` (vision model `qwen2.5vl:3b` installed + verified reading image)
+- [x] Scanned PDF OCR works — `✓` (RapidOCR live end-to-end: scanned-only PDF → OCR → vision-structured findings → DOCX, verified)
+- [x] Image understanding works — `✓` (vision model `qwen2.5vl:3b` structures checklist tables straight from the page image)
 
 ### RAG
 - [x] Documents can be ingested — `✓`
@@ -93,7 +93,7 @@
 ### Demo
 - [x] Inspection report → approval note — `✓` (live: `approval_note.docx`, passed)
 - [ ] Coding → sandbox → tests → verification — `△` (live sandbox validation pending)
-- [ ] Multimodal document analysis — `△` (vision model pending)
+- [x] Multimodal document analysis — `✓` (live: scanned PDF → RapidOCR → `qwen2.5vl:3b` structured findings → verified DOCX; `model_calls=2`)
 - [x] Real DOCX artifact — `✓`
 - [x] Agent progress visible in UI — `✓` (SSE timeline)
 
@@ -106,7 +106,7 @@
 | 1 | Foundation (Next.js, FastAPI, Postgres, Ollama, Compose) | `✓` built · full-stack validation `△` |
 | 2 | Model layer (Provider, OllamaProvider, Registry, Router) | `✓` |
 | 3 | Agent (Planner, Executor, State, ToolRegistry, Verifier) | `✓` |
-| 4 | Documents (PDF, OCR, images) | `△` (OCR swap in progress) |
+| 4 | Documents (PDF, OCR, images) | `✓` (RapidOCR live, vision-structure live) |
 | 5 | RAG (embeddings, Qdrant, ingest, retrieval, citations) | `△` (qdrant live pending) |
 | 6 | Tools (filesystem, calculator, python, DOCX) | `✓` |
 | 7 | Sandbox (docker, network isolation, limits) | `△` (live validation pending) |
@@ -145,4 +145,5 @@
 - **2026-08-29 (B1/B2)** — Models pulled: general/coding/vision/embedding all installed and verified inference (vision read MC-1042 from a rendered page). OCR switched PaddleOCR → RapidOCR (`multimodal/ocr.py`); verified OCR extraction on rendered PDF page.
 - **2026-08-30** — Docs milestone: `PRD.md` and `PPT_CONTENT.md` (incl. full architecture/workflow appendix) authored; `AGENTS.md` minimized to ~500 words (idea, architecture, tech stack, docs-sync rule). `.gitignore` hardened (`.turbo/`, `*.log`, `*.err`, `graphify-out/`); junk removed from index; **initial git commit created** (`8601541`). `apps/web/Dockerfile` confirmed present.
 - **2026-08-30 (runtime)** — Open item #1 → **verified**: real (non-deterministic) model inference wired into the agent handler layer (`services/task_service.py`: `_generate` → `ModelProvider.generate`, `_model_analysis`, `_model_code`; LLM-fallback keeps runs resilient). Live task-6 (inspection PDF → approval note) reports `model_calls=2`, `selected_models=["qwen2.5:3b"]`, DOCX verified `passed` (`file_exists`, `sections_exist`). 42/42 pytest green; ruff clean on touched file.
+- **2026-08-30 (multimodal)** — **Scanned-PDF OCR milestone**: `rapidocr-onnxruntime` installed on runtime env. Image-only (no text layer) scanned PDF built from `inspection_report.pdf` and run live (task-9): pipeline detects `scanned` → local RapidOCR → `qwen2.5vl:3b` reads the rendered page and structures the checklist (JSON-or-markdown-table extraction added to `task_service.py`; deterministic `_parse_findings` extended to OCR split-layout as fallback) → real analysis (`model_calls=2`) → `approval_note.docx` verified `passed` with all 5 findings named correctly. `test_pipeline.py` updated for the now-installed OCR engine.
 

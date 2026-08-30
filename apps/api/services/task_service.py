@@ -294,6 +294,10 @@ class TaskService:
         async def extract_findings(context, detail):
             doc = context.tool_results.get("extracted_document", {})
             findings = self._parse_findings(doc.get("text", ""))
+            if doc.get("content_type") in ("scanned", "image"):
+                vision = await self._extract_findings_vision(context, doc)
+                if vision:
+                    findings = vision
             context.tool_results["findings"] = findings
             return {"ok": True, "findings": findings}
         ah.register("extract_findings", extract_findings)
@@ -393,6 +397,7 @@ class TaskService:
         prompt: str,
         system: str | None = None,
         max_tokens: int | None = None,
+        images: list[str] | None = None,
     ) -> str:
         """Invoke the selected model through the provider abstraction.
 
@@ -411,6 +416,7 @@ class TaskService:
                     system=system,
                     max_tokens=max_tokens,
                     temperature=0.2,
+                    images=images,
                 )
             )
             context.model_calls += 1
@@ -452,25 +458,187 @@ class TaskService:
         )
         return text or self._default_code(context.prompt)
 
+    async def _extract_findings_vision(self, context, doc: dict) -> list[dict]:
+        """Structure findings from a scanned/image document with the vision model.
+
+        OCR text of tables loses row/column layout, so for scanned inputs the
+        vision model reads the rendered page and returns structured findings.
+        Tolerates either a JSON array or a markdown table in the reply. Returns
+        [] (caller uses the deterministic parser) on any failure.
+        """
+        import base64
+        import io
+
+        if not context.selected_model_name:
+            return []
+        try:
+            ws = context.workspace_obj
+            fname = context.documents_accessed[-1] if context.documents_accessed else None
+            source = (ws.dir("input") / fname) if fname else None
+            if source is None or not source.is_file():
+                return []
+            from multimodal.images import load_image, render_pdf_pages
+
+            if source.suffix.lower() == ".pdf":
+                images = render_pdf_pages(source, max_pages=1)
+                page = images[0] if images else None
+            else:
+                page = load_image(source)
+            if page is None:
+                return []
+            buf = io.BytesIO()
+            page.convert("RGB").save(buf, format="JPEG", quality=90)
+            b64 = base64.b64encode(buf.getvalue()).decode()
+
+            ocr_hint = doc.get("text", "")[:1500]
+            prompt = (
+                "You are reading a page from an inspection report (noisy local OCR "
+                "text of the same page is included below).\n"
+                f"OCR TEXT:\n{ocr_hint or '(empty)'}\n\n"
+                "Return the checklist table rows ONLY, with columns item, status "
+                "(PASS or FAIL), remark. Either a JSON array of {\"item\":..., "
+                "\"status\":..., \"remark\":...} objects, or a markdown table. "
+                "No prose, no markdown fences."
+            )
+            text = await self._generate(
+                context,
+                prompt,
+                system="You are a precise table-extraction model.",
+                max_tokens=600,
+                images=[b64],
+            )
+            if not text:
+                return []
+            rows = self._json_rows(text) or self._table_rows(text)
+            return rows
+        except Exception as exc:  # noqa: BLE001
+            context.model_reason = f"Vision extraction skipped, used OCR parse: {exc}"
+            return []
+
+    @staticmethod
+    def _json_rows(text: str) -> list[dict]:
+        """Parse a JSON array of {item, status, remark} objects."""
+        import json
+
+        start, end = text.find("["), text.rfind("]")
+        if start < 0 or end <= start:
+            return []
+        try:
+            payload = json.loads(text[start : end + 1])
+        except (json.JSONDecodeError, ValueError):
+            return []
+        rows: list[dict] = []
+        if not isinstance(payload, list):
+            return rows
+        for row in payload:
+            if not isinstance(row, dict):
+                continue
+            item = str(row.get("item", "")).strip()
+            if not item:
+                continue
+            status_raw = str(row.get("status", "")).upper()
+            rows.append({
+                "item": item,
+                "status": "Fail" if status_raw.startswith("FAIL") else "Pass",
+                "remark": str(row.get("remark", "")).strip(),
+            })
+        return rows
+
+    @staticmethod
+    def _table_rows(text: str) -> list[dict]:
+        """Parse a markdown/pipe table with an item|status|remark layout."""
+        rows: list[dict] = []
+        skip = {"checklist item", "item", "status", "remark"}
+        for line in text.splitlines():
+            if "|" not in line:
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            status_idx = next(
+                (
+                    i for i, c in enumerate(cells)
+                    if c.upper() in ("PASS", "FAIL", "PASSED", "FAILED")
+                ),
+                -1,
+            )
+            if status_idx < 0:
+                continue
+            item = cells[status_idx - 1].strip("*- ") if status_idx > 0 else ""
+            remark = cells[status_idx + 1].strip() if status_idx + 1 < len(cells) else ""
+            if not item or item.lower() in skip:
+                continue
+            rows.append({
+                "item": item,
+                "status": "Fail" if cells[status_idx].upper().startswith("FAIL") else "Pass",
+                "remark": remark,
+            })
+        return rows
+
     @staticmethod
     def _parse_findings(text: str) -> list[dict]:
+        """Extract inspection findings from digital text layers and OCR output.
+
+        Digital PDFs keep each line as "item STATUS remark"; OCR of scanned
+        tables often drops the status onto its own line ("item" / "FAIL" /
+        "remark") because coordinates are lost. Handle both layouts.
+        """
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
         findings: list[dict] = []
-        for line in text.splitlines():
-            upper = line.upper()
-            status = None
-            for token in ("FAIL", "PASS"):
-                if token in upper:
-                    status = token
-                    break
-            if not status:
+        consumed: set[int] = set()
+        status_tokens = ("FAILED", "PASSED", "FAIL", "PASS")
+
+        # Layout A — status on its own line (OCR tables): prev line = item,
+        # next line = remark.
+        n = len(lines)
+        for i, line in enumerate(lines):
+            if line.upper() in status_tokens:
+                item = ""
+                if i > 0 and (i - 1) not in consumed:
+                    item = lines[i - 1]
+                    consumed.add(i - 1)
+                remark = ""
+                if i + 1 < n:
+                    remark = lines[i + 1]
+                    consumed.add(i + 1)
+                if not item:
+                    item = f"Item {len(findings) + 1}"
+                findings.append({
+                    "item": item,
+                    "status": "Fail" if line.upper().startswith("FAIL") else "Pass",
+                    "remark": remark,
+                })
+                consumed.add(i)
+
+        # Layout B — inline "item STATUS remark" (digital text layers).
+        for idx, line in enumerate(lines):
+            if idx in consumed:
                 continue
-            # heuristic: item = leading tokens before status, remark = after
-            parts = line.split(status, 1)
-            item = parts[0].strip(" -:").strip()
-            remark = parts[1].strip() if len(parts) > 1 else ""
-            if item:
-                findings.append({"item": item, "status": status.title(), "remark": remark})
-        return findings
+            upper = line.upper()
+            for token in status_tokens:
+                pos = upper.find(token)
+                if pos < 0:
+                    continue
+                item = line[:pos].strip(" -:").strip()
+                if not item:
+                    continue
+                remark = line[pos + len(token):].strip(" -:").strip()
+                findings.append({
+                    "item": item,
+                    "status": "Fail" if token.startswith("FAIL") else "Pass",
+                    "remark": remark,
+                })
+                consumed.add(idx)
+                break
+
+        # Drop duplicates (same item/status seen twice), keep first.
+        seen: set[tuple] = set()
+        unique: list[dict] = []
+        for f in findings:
+            key = (f["item"].lower(), f["status"])
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(f)
+        return unique
 
     @staticmethod
     def _machine_id(context) -> str:
