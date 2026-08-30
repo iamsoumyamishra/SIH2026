@@ -33,7 +33,7 @@
 | Security / Auth | `✓` (JWT + demo user) |
 | Sovereignty | `△` (counters present; full-stack demo pending) |
 | Full production-like stack (compose) | `△` (not yet running) |
-| Git tracking | `☐` (nothing committed yet) |
+| Git tracking | `✓` (initial commit done) |
 
 ---
 
@@ -119,12 +119,10 @@
 ## Open Items (actionable)
 
 1. **Verify API model registration** — confirm `/api/models` + live agent run uses real models (not deterministic path).
-2. **`apps/web/Dockerfile`** — does not exist originally; authored (pnpm + hoisted + standalone), rebuild in progress.
-3. **Compose stack up** — start postgres/qdrant/minio/ollama/api/web.
-4. **Full-stack config** — flip `DATABASE_BACKEND=postgresql` + `RAG_BACKEND=qdrant`, validate.
-5. **Sandbox live validation** — pull base image, run `execute_code` in a real container.
-6. **mypy** — wire into turbo + make pass.
-7. **Git initial commit** — clean tree (`workspaces/`, `data/`, `.env`, build junk) and commit.
+2. **Compose stack up** — start postgres/qdrant/minio/ollama/api/web.
+3. **Full-stack config** — flip `DATABASE_BACKEND=postgresql` + `RAG_BACKEND=qdrant`, validate.
+4. **Sandbox live validation** — pull base image, run `execute_code` in a real container.
+5. **mypy** — wire into turbo + make pass.
 
 ---
 
@@ -141,4 +139,5 @@
 
 - **2026-08-29** — Initial tracker; captured current state, pnpm/turbo migration complete, OCR switch to RapidOCR approved (PaddleOCR impractical on this Windows box), small-model set agreed for 4GB VRAM, mypy to be wired in. `apps/web/Dockerfile` found to be missing (compose web broken).
 - **2026-08-29 (B1/B2)** — Models pulled: general/coding/vision/embedding all installed and verified inference (vision read MC-1042 from a rendered page). OCR switched PaddleOCR → RapidOCR (`multimodal/ocr.py`); verified OCR extraction on rendered PDF page.
+- **2026-08-30** — Docs milestone: `PRD.md` and `PPT_CONTENT.md` (incl. full architecture/workflow appendix) authored; `AGENTS.md` minimized to ~500 words (idea, architecture, tech stack, docs-sync rule). `.gitignore` hardened (`.turbo/`, `*.log`, `*.err`, `graphify-out/`); junk removed from index; **initial git commit created** (`8601541`). `apps/web/Dockerfile` confirmed present.
 
