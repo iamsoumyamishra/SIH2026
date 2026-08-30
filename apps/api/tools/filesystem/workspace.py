@@ -7,6 +7,7 @@ The agent can only resolve paths within its own workspace. Path traversal
 (`..`, symlink escape) and arbitrary host paths are blocked. Every path is
 validated and normalized.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -54,9 +55,7 @@ class Workspace:
 
         # Symlink / traversal escape check
         if not self._is_within(candidate):
-            raise PathOutsideWorkspaceError(
-                f"Path escapes workspace: {rel_path!r}"
-            )
+            raise PathOutsideWorkspaceError(f"Path escapes workspace: {rel_path!r}")
         return candidate
 
     def _is_within(self, candidate: Path) -> bool:

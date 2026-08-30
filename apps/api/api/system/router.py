@@ -3,6 +3,7 @@
 Sovereignty counters reflect real application activity (local model requests,
 tool executions) plus a live internet-reachability probe — never fabricated.
 """
+
 from __future__ import annotations
 
 import urllib.request
@@ -51,11 +52,7 @@ def sovereignty(
     db: Session = Depends(get_db),
 ) -> dict:
     since = datetime.now(UTC) - timedelta(hours=1)
-    local_tools = (
-        db.query(ToolExecution)
-        .filter(ToolExecution.started_at >= since)
-        .count()
-    )
+    local_tools = db.query(ToolExecution).filter(ToolExecution.started_at >= since).count()
     internet = _internet_reachable()
     return {
         "internet": "BLOCKED" if not internet else "CHECK",

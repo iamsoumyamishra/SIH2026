@@ -1,4 +1,5 @@
 """Artifact endpoints: download generated files (AGENTS.md §29: artifacts)."""
+
 from __future__ import annotations
 
 from pathlib import Path

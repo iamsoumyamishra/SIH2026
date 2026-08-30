@@ -4,6 +4,7 @@ Enforces: no network, isolated filesystem, no host/secret access, required
 timeout, CPU limit, and memory limit. These values are always applied to any
 container created by the sandbox.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

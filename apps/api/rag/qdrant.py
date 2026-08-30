@@ -6,6 +6,7 @@ Two implementations, chosen by settings.rag_backend (see ADR-001):
 
 Both are local; neither is a cloud service.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -27,8 +28,7 @@ class VectorStore(ABC):
         """return [{id, score, payload}]"""
 
     @abstractmethod
-    def count(self) -> int:
-        ...
+    def count(self) -> int: ...
 
 
 class LocalVectorStore(VectorStore):
@@ -112,12 +112,21 @@ class QdrantVectorStore(VectorStore):
         self._client.upsert(collection_name=self._collection, points=pts)
 
     def search(self, vector: list[float], limit: int = 5) -> list[dict[str, Any]]:
-        hits = self._client.search(
+        # qdrant-client ≥1.9 renamed search → query_points; older versions only
+        # expose `search`. Resolve at runtime for host-version compatibility.
+        query = getattr(self._client, "query_points", None)
+        if query is not None:
+            resp = query(
+                collection_name=self._collection,
+                query=vector,
+                limit=limit,
+            )
+            points = list(getattr(resp, "points", ()) or ())
+            return [{"id": h.id, "score": h.score, "payload": h.payload or {}} for h in points]
+        hits = self._client.search(  # type: ignore[attr-defined]  # legacy client
             collection_name=self._collection, query_vector=vector, limit=limit
         )
-        return [
-            {"id": h.id, "score": h.score, "payload": h.payload or {}} for h in hits
-        ]
+        return [{"id": h.id, "score": h.score, "payload": h.payload or {}} for h in hits]
 
     def count(self) -> int:
         return int(self._client.count(collection_name=self._collection).count)

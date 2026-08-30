@@ -3,6 +3,7 @@
 Everything runs locally: ingest → chunk → embed → local store; search → embed →
 retrieve with source metadata for citations.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

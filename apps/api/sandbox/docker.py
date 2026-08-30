@@ -7,6 +7,7 @@ environment variables of the host are never exposed.
 If the Docker daemon is unavailable, an explicit DockerUnavailableError is
 raised — never a silent fallback to running code on the host.
 """
+
 from __future__ import annotations
 
 import time
@@ -38,9 +39,7 @@ class DockerRunner:
         try:
             import docker  # type: ignore
         except ImportError as exc:
-            raise DockerUnavailableError(
-                "Docker Python SDK not installed."
-            ) from exc
+            raise DockerUnavailableError("Docker Python SDK not installed.") from exc
         try:
             return docker.from_env()
         except Exception as exc:  # noqa: BLE001
@@ -99,9 +98,7 @@ class DockerRunner:
             try:
                 result = container.wait(timeout=self.policy.timeout_seconds)
                 exit_code = int(result.get("StatusCode", -1))
-                logs = container.logs(stdout=True, stderr=True).decode(
-                    "utf-8", errors="replace"
-                )
+                logs = container.logs(stdout=True, stderr=True).decode("utf-8", errors="replace")
             except docker.errors.NotFound:
                 exit_code = -1
                 logs = ""

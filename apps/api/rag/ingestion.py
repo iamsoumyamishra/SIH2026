@@ -1,4 +1,5 @@
 """RAG ingestion: parse → chunk → embed → store (all local)."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -34,7 +35,7 @@ class IngestionService:
         texts = [c.text for c in chunks]
         vectors = self.embeddings.embed_many(texts)
 
-        points = []
+        points: list[dict[str, Any]] = []
         for chunk, vector in zip(chunks, vectors):
             points.append(
                 {

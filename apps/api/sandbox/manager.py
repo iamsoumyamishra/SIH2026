@@ -4,6 +4,7 @@ Provides a high-level interface for the code tools. All execution goes through
 the Docker runner; if Docker is unavailable it returns a structured failure so
 the agent observes it and can replan — never runs on the host.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -29,10 +30,10 @@ class SandboxManager:
         except Exception as exc:  # noqa: BLE001
             error = f"Sandbox execution error: {exc}"
 
-        if error is not None:
+        if error is not None or r is None:
             return {
                 "ok": False,
-                "error": error,
+                "error": error or "Sandbox produced no result.",
                 "stdout": "",
                 "stderr": "",
                 "exit_code": None,

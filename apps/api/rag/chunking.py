@@ -2,6 +2,7 @@
 
 Splits text into bounded chunks, optionally by section (AGENTS.md §20, §21).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -84,8 +85,13 @@ def chunk_text(
 
 
 def _make_chunk(
-    text: str, index: int, prefix: str, document_id: str,
-    document_name: str, page_number: int | None, section: str | None,
+    text: str,
+    index: int,
+    prefix: str,
+    document_id: str,
+    document_name: str,
+    page_number: int | None,
+    section: str | None,
 ) -> Chunk:
     return Chunk(
         text=text.strip(),

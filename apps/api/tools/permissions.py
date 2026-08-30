@@ -1,4 +1,5 @@
 """Permission and risk-level policy helpers (AGENTS.md §14, §5.3)."""
+
 from __future__ import annotations
 
 RISK_LEVELS = ("low", "medium", "high")

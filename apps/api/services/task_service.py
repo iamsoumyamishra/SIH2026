@@ -7,6 +7,7 @@ steps, tool executions, and artifacts.
 This is the layer the API calls; the agent itself stays decoupled from the
 concrete tools/services via ActionHandler + ToolRegistry + ModelRouter.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -182,6 +183,7 @@ class TaskService:
             if status in ("done", "warning"):
                 # flip node-end states to done for the UI
                 pass
+
         return progress
 
     def _wire_execution_hooks(self, registry: ToolRegistry, db, task_id, run_id, audit):
@@ -197,6 +199,7 @@ class TaskService:
             db.commit()
             audit.log_tool(task_id, name, "success", risk)
             self._emit_now(task_id, {"type": "tool", "name": name, "risk": risk})
+
         registry.on_execution(on_tool)
 
     def _emit_now(self, task_id, event: dict):
@@ -251,8 +254,7 @@ class TaskService:
                 "provider": ctx.selected_provider,
             },
             "steps": [
-                {"label": s.label, "status": s.status, "detail": s.detail}
-                for s in ctx.steps
+                {"label": s.label, "status": s.status, "detail": s.detail} for s in ctx.steps
             ],
             "artifacts": ctx.artifacts,
             "retrieved_sources": ctx.retrieved_sources,
@@ -288,6 +290,7 @@ class TaskService:
                 "text": util.text[:2000],
                 "warnings": util.warnings,
             }
+
         ah.register("read_document", read_document)
         ah.register("perform_ocr", read_document)
 
@@ -300,6 +303,7 @@ class TaskService:
                     findings = vision
             context.tool_results["findings"] = findings
             return {"ok": True, "findings": findings}
+
         ah.register("extract_findings", extract_findings)
 
         async def search_knowledge(context, detail):
@@ -312,12 +316,14 @@ class TaskService:
                 return {"ok": True, "results": res["results"]}
             except Exception as exc:  # noqa: BLE001
                 return {"ok": False, "error": f"RAG search failed: {exc}"}
+
         ah.register("search_knowledge", search_knowledge)
 
         async def analyze_findings(context, detail):
             analysis = await self._model_analysis(context)
             context.tool_results["analysis"] = analysis
             return {"ok": True, "analysis": analysis}
+
         ah.register("analyze_findings", analyze_findings)
         ah.register("analyze", analyze_findings)
         ah.register("answer", analyze_findings)
@@ -326,9 +332,9 @@ class TaskService:
             ws = context.workspace_obj
             findings = context.tool_results.get("findings", [])
             sop = context.tool_results.get("sop_results", {}).get("results", [])
-            sop_refs = [
-                f"{r.get('document_name')} §{r.get('section') or '?'}" for r in sop
-            ] or ["Maintenance SOP"]
+            sop_refs = [f"{r.get('document_name')} §{r.get('section') or '?'}" for r in sop] or [
+                "Maintenance SOP"
+            ]
             machine_id = self._machine_id(context)
             date = "2026-08-20"
             recommendation = self._recommendation(findings)
@@ -337,18 +343,23 @@ class TaskService:
                 recommendation = analysis.strip().splitlines()[0]
             out = ws.dir("output") / "approval_note.docx"
             make_approval_note(
-                out, machine_id=machine_id, date=date,
-                findings=findings, sop_references=sop_refs,
+                out,
+                machine_id=machine_id,
+                date=date,
+                findings=findings,
+                sop_references=sop_refs,
                 recommendation=recommendation,
             )
             context.artifacts.append(
                 {"name": "approval_note.docx", "kind": "docx", "path": str(out)}
             )
             return {"ok": True, "artifact": str(out), "kind": "docx", "name": "approval_note.docx"}
+
         ah.register("generate_docx", generate_docx)
 
         async def verify_document(context, detail):
             from agent.verifier import Verifier
+
             verifier = Verifier()
             checks: list[dict] = []
             passed = True
@@ -363,6 +374,7 @@ class TaskService:
                         passed = False
             context.verification = {"passed": passed, "items": checks}
             return {"ok": True, "verification": context.verification}
+
         ah.register("verify_document", verify_document)
         ah.register("verify_result", verify_document)
 
@@ -371,6 +383,7 @@ class TaskService:
             code = await self._model_code(context)
             context.tool_results["code"] = code
             return {"ok": True, "code": code}
+
         ah.register("generate_code", generate_code)
 
         async def execute_code(context, detail):
@@ -378,6 +391,7 @@ class TaskService:
             result = await registry.execute("execute_code", context, code=code)
             context.tool_results["exec_result"] = result["result"]
             return result["result"]
+
         ah.register("execute_code", execute_code)
 
         async def run_tests(context, detail):
@@ -386,6 +400,7 @@ class TaskService:
             result = await registry.execute("run_tests", context, code=code, tests=tests)
             context.tool_results["test_result"] = result["result"]
             return result["result"]
+
         ah.register("run_tests", run_tests)
 
         return ah
@@ -496,8 +511,8 @@ class TaskService:
                 "text of the same page is included below).\n"
                 f"OCR TEXT:\n{ocr_hint or '(empty)'}\n\n"
                 "Return the checklist table rows ONLY, with columns item, status "
-                "(PASS or FAIL), remark. Either a JSON array of {\"item\":..., "
-                "\"status\":..., \"remark\":...} objects, or a markdown table. "
+                '(PASS or FAIL), remark. Either a JSON array of {"item":..., '
+                '"status":..., "remark":...} objects, or a markdown table. '
                 "No prose, no markdown fences."
             )
             text = await self._generate(
@@ -537,11 +552,13 @@ class TaskService:
             if not item:
                 continue
             status_raw = str(row.get("status", "")).upper()
-            rows.append({
-                "item": item,
-                "status": "Fail" if status_raw.startswith("FAIL") else "Pass",
-                "remark": str(row.get("remark", "")).strip(),
-            })
+            rows.append(
+                {
+                    "item": item,
+                    "status": "Fail" if status_raw.startswith("FAIL") else "Pass",
+                    "remark": str(row.get("remark", "")).strip(),
+                }
+            )
         return rows
 
     @staticmethod
@@ -555,7 +572,8 @@ class TaskService:
             cells = [c.strip() for c in line.strip("|").split("|")]
             status_idx = next(
                 (
-                    i for i, c in enumerate(cells)
+                    i
+                    for i, c in enumerate(cells)
                     if c.upper() in ("PASS", "FAIL", "PASSED", "FAILED")
                 ),
                 -1,
@@ -566,11 +584,13 @@ class TaskService:
             remark = cells[status_idx + 1].strip() if status_idx + 1 < len(cells) else ""
             if not item or item.lower() in skip:
                 continue
-            rows.append({
-                "item": item,
-                "status": "Fail" if cells[status_idx].upper().startswith("FAIL") else "Pass",
-                "remark": remark,
-            })
+            rows.append(
+                {
+                    "item": item,
+                    "status": "Fail" if cells[status_idx].upper().startswith("FAIL") else "Pass",
+                    "remark": remark,
+                }
+            )
         return rows
 
     @staticmethod
@@ -601,11 +621,13 @@ class TaskService:
                     consumed.add(i + 1)
                 if not item:
                     item = f"Item {len(findings) + 1}"
-                findings.append({
-                    "item": item,
-                    "status": "Fail" if line.upper().startswith("FAIL") else "Pass",
-                    "remark": remark,
-                })
+                findings.append(
+                    {
+                        "item": item,
+                        "status": "Fail" if line.upper().startswith("FAIL") else "Pass",
+                        "remark": remark,
+                    }
+                )
                 consumed.add(i)
 
         # Layout B — inline "item STATUS remark" (digital text layers).
@@ -620,12 +642,14 @@ class TaskService:
                 item = line[:pos].strip(" -:").strip()
                 if not item:
                     continue
-                remark = line[pos + len(token):].strip(" -:").strip()
-                findings.append({
-                    "item": item,
-                    "status": "Fail" if token.startswith("FAIL") else "Pass",
-                    "remark": remark,
-                })
+                remark = line[pos + len(token) :].strip(" -:").strip()
+                findings.append(
+                    {
+                        "item": item,
+                        "status": "Fail" if token.startswith("FAIL") else "Pass",
+                        "remark": remark,
+                    }
+                )
                 consumed.add(idx)
                 break
 

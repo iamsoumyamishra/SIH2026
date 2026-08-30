@@ -4,6 +4,7 @@ Orchestrates: classify → plan → route model → execute → verify, within a
 iteration loop (MAX_AGENT_ITERATIONS). Only the abstractions (ModelRouter,
 ModelProvider, ToolRegistry, handlers) are used — never Ollama directly.
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -77,7 +78,8 @@ class Orchestrator:
             context.selected_provider = routed.provider
             context.model_reason = routed.reason
             await self._emit(
-                "Selecting model", "done",
+                "Selecting model",
+                "done",
                 f"{routed.model_name} ({routed.provider})",
             )
         except ModelUnavailableError as exc:
@@ -130,9 +132,7 @@ class Orchestrator:
     # ── verification ─────────────────────────────────────────
     def _verify(self, context: AgentContext) -> dict:
         checks: dict = {"passed": True, "items": []}
-        docx_paths = [
-            a["path"] for a in context.artifacts if a.get("kind") == "docx"
-        ]
+        docx_paths = [a["path"] for a in context.artifacts if a.get("kind") == "docx"]
         for path in docx_paths:
             res = self.verifier.verify_docx_file(
                 path,

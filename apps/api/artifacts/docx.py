@@ -3,6 +3,7 @@
 Creates real, valid .docx files using python-docx. The agent never returns
 markdown pretending to be a document.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -57,7 +58,7 @@ def make_approval_note(
     ok = [f for f in findings if f.get("status", "").upper() == "PASS"]
     failed = [f for f in findings if f.get("status", "").upper() == "FAIL"]
 
-    sections = [
+    sections: list[dict] = [
         {
             "heading": "Machine & Report",
             "body": [
@@ -68,9 +69,7 @@ def make_approval_note(
         },
         {
             "heading": "Findings",
-            "body": [
-                f"- {f.get('item','')}: {f.get('remark','')}" for f in findings
-            ],
+            "body": [f"- {f.get('item', '')}: {f.get('remark', '')}" for f in findings],
         },
         {
             "heading": "Required Action",

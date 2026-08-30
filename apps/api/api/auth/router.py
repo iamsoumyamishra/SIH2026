@@ -1,4 +1,5 @@
 """Authentication endpoints (AGENTS.md §29: auth)."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -40,9 +41,7 @@ def login(
             detail="Incorrect username or password",
         )
     token = auth.create_access_token(subject=user.username, user_id=user.id)
-    return TokenResponse(
-        access_token=token, user_id=user.id, username=user.username
-    )
+    return TokenResponse(access_token=token, user_id=user.id, username=user.username)
 
 
 @router.post("/login/json", response_model=TokenResponse)
@@ -61,9 +60,7 @@ def login_json(
             detail="Incorrect username or password",
         )
     token = auth.create_access_token(subject=user.username, user_id=user.id)
-    return TokenResponse(
-        access_token=token, user_id=user.id, username=user.username
-    )
+    return TokenResponse(access_token=token, user_id=user.id, username=user.username)
 
 
 @router.get("/me")

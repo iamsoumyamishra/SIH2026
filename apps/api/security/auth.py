@@ -3,6 +3,7 @@
 Uses bcrypt directly for password hashing (avoids passlib/bcrypt version
 conflicts) and PyJWT for tokens. All secrets come from settings/env.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -34,9 +35,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def create_access_token(subject: str | int, user_id: int | None = None) -> str:
-    expire = datetime.now(UTC) + timedelta(
-        minutes=settings.access_token_expire_minutes
-    )
+    expire = datetime.now(UTC) + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {"sub": str(subject), "exp": expire}
     if user_id is not None:
         payload["uid"] = user_id

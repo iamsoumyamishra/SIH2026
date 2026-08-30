@@ -3,6 +3,7 @@
 A simple asyncio pub/sub keyed by task_id. No external broker is used —
 consistent with the sovereign/local-first requirement.
 """
+
 from __future__ import annotations
 
 import asyncio

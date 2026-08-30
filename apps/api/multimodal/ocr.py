@@ -7,6 +7,7 @@ dependency, we load it lazily. If it is not installed, we raise a clear
 OcrUnavailableError so the caller can surface "OCR unavailable — install
 rapidocr-onnxruntime" rather than silently falling back to any cloud service.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -21,6 +22,7 @@ class OcrUnavailableError(Exception):
 def _load_rapidocr():
     try:
         from rapidocr_onnxruntime import RapidOCR  # type: ignore
+
         return RapidOCR()
     except ImportError as exc:
         raise OcrUnavailableError(

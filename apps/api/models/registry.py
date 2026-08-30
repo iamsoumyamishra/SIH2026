@@ -4,6 +4,7 @@ Loads role→model assignments from registry.yaml and environment variables, the
 builds ModelInfo objects and exposes their availability against the provider.
 The registry is purely local and configuration-driven; no models are downloaded.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -116,8 +117,7 @@ class ModelRegistry:
             err: str | None = None
             name = info.model_name.split(":")[0]  # compare prefix w/o tag
             found = any(
-                m.split(":")[0] == name or m == info.model_name
-                for m in available_on_provider
+                m.split(":")[0] == name or m == info.model_name for m in available_on_provider
             )
             if not found:
                 err = (

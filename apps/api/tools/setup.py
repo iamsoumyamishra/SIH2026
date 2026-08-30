@@ -4,6 +4,7 @@ Builds a ToolRegistry pre-populated with the default tools and grants the
 permission set appropriate for a task. Tools are added incrementally as new
 capabilities (documents, vision, rag, code, artifacts) are implemented.
 """
+
 from __future__ import annotations
 
 from tools.artifacts.tool import (

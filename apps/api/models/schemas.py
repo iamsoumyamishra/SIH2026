@@ -1,4 +1,5 @@
 """Pydantic schemas for models, capabilities, and routing."""
+
 from __future__ import annotations
 
 from enum import StrEnum

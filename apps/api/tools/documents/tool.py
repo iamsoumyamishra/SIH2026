@@ -1,4 +1,5 @@
 """Document extraction tool: routes any file through the local pipeline."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -19,8 +20,7 @@ class _DocMixin:
 class ExtractDocumentTool(_DocMixin, ToolBase):
     name = "extract_document"
     description = (
-        "Extract text (and tables) from a workspace file. "
-        "Handles PDF, image, TXT, DOCX, XLSX."
+        "Extract text (and tables) from a workspace file. Handles PDF, image, TXT, DOCX, XLSX."
     )
     permission = "document.read"
     risk_level = "low"

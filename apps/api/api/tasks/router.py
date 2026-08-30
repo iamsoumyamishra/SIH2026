@@ -2,6 +2,7 @@
 
 See AGENTS.md §29 (tasks, agents) and §30 (SSE live agent progress).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -47,16 +48,12 @@ async def _run_in_background(task_id: int, code_request: bool) -> None:
             service = TaskService()
             db = service._db_session()
 
-            db.query(Task).filter(Task.id == task_id).update(
-                {Task.status: TaskStatus.FAILED}
-            )
+            db.query(Task).filter(Task.id == task_id).update({Task.status: TaskStatus.FAILED})
             db.commit()
             db.close()
         except Exception:  # noqa: BLE001
             pass
-        asyncio.create_task(
-            get_event_bus().publish(task_id, {"type": "error", "detail": str(exc)})
-        )
+        asyncio.create_task(get_event_bus().publish(task_id, {"type": "error", "detail": str(exc)}))
 
 
 @router.post("")
@@ -87,9 +84,7 @@ def list_tasks(
     current=Depends(auth.get_current_user),
     db: Session = Depends(get_db),
 ) -> list[dict]:
-    tasks = (
-        db.query(Task).filter(Task.user_id == current.id).order_by(Task.id.desc()).all()
-    )
+    tasks = db.query(Task).filter(Task.user_id == current.id).order_by(Task.id.desc()).all()
     return [
         {
             "id": t.id,
@@ -143,10 +138,10 @@ def task_detail(
     artifacts = (
         [
             {
-                    "name": a.name,
-                    "kind": a.kind,
-                    "id": a.id,
-                    "verification_status": (
+                "name": a.name,
+                "kind": a.kind,
+                "id": a.id,
+                "verification_status": (
                     a.verification_status.value if a.verification_status else None
                 ),
             }

@@ -1,4 +1,5 @@
 """Table extraction from PDFs using pdfplumber (local)."""
+
 from __future__ import annotations
 
 from pathlib import Path

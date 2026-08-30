@@ -4,6 +4,7 @@ Input → file-type detection → parse → scanned? → OCR → tables → norm
 representation. Everything is local. OCR absence is reported explicitly and
 never silently downgraded to a cloud service.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

@@ -3,15 +3,17 @@
 Evaluates arithmetic expressions without executing arbitrary code. Uses Python's
 AST to whitelist safe operators and numeric literals. No shell, no imports.
 """
+
 from __future__ import annotations
 
 import ast
 import operator
+from collections.abc import Callable
 from typing import Any
 
 from tools.base import ToolBase
 
-_BIN_OPS: dict[type, object] = {
+_BIN_OPS: dict[type, Callable[[Any, Any], Any]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
@@ -21,7 +23,7 @@ _BIN_OPS: dict[type, object] = {
     ast.Pow: operator.pow,
 }
 
-_UNARY_OPS: dict[type, object] = {
+_UNARY_OPS: dict[type, Callable[[Any], Any]] = {
     ast.UAdd: operator.pos,
     ast.USub: operator.neg,
 }

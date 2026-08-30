@@ -121,7 +121,8 @@
 1. **Compose stack up** — start postgres/qdrant/minio/ollama/api/web.
 2. **Full-stack config** — flip `DATABASE_BACKEND=postgresql` + `RAG_BACKEND=qdrant`, validate.
 3. **Sandbox live validation** — pull base image, run `execute_code` in a real container.
-4. **mypy** — wire into turbo + make pass.
+
+> **Resolved 2026-08-30:** mypy is wired into turbo (`@sovereign/api` `typecheck` script, `sqlalchemy.ext.mypy.plugin`) and passes clean (`Success: no issues found in 86 source files`). Done with the OCR/`_parse_findings`/vision work it covered.
 
 > **Resolved 2026-08-30:** API model registration + live agent run now uses real models —
 > `/api/models` reports all roles `available`; task-6 inspection→approval run selected
@@ -146,4 +147,5 @@
 - **2026-08-30** — Docs milestone: `PRD.md` and `PPT_CONTENT.md` (incl. full architecture/workflow appendix) authored; `AGENTS.md` minimized to ~500 words (idea, architecture, tech stack, docs-sync rule). `.gitignore` hardened (`.turbo/`, `*.log`, `*.err`, `graphify-out/`); junk removed from index; **initial git commit created** (`8601541`). `apps/web/Dockerfile` confirmed present.
 - **2026-08-30 (runtime)** — Open item #1 → **verified**: real (non-deterministic) model inference wired into the agent handler layer (`services/task_service.py`: `_generate` → `ModelProvider.generate`, `_model_analysis`, `_model_code`; LLM-fallback keeps runs resilient). Live task-6 (inspection PDF → approval note) reports `model_calls=2`, `selected_models=["qwen2.5:3b"]`, DOCX verified `passed` (`file_exists`, `sections_exist`). 42/42 pytest green; ruff clean on touched file.
 - **2026-08-30 (multimodal)** — **Scanned-PDF OCR milestone**: `rapidocr-onnxruntime` installed on runtime env. Image-only (no text layer) scanned PDF built from `inspection_report.pdf` and run live (task-9): pipeline detects `scanned` → local RapidOCR → `qwen2.5vl:3b` reads the rendered page and structures the checklist (JSON-or-markdown-table extraction added to `task_service.py`; deterministic `_parse_findings` extended to OCR split-layout as fallback) → real analysis (`model_calls=2`) → `approval_note.docx` verified `passed` with all 5 findings named correctly. `test_pipeline.py` updated for the now-installed OCR engine.
+- **2026-08-30 (mypy)** — Open item #4 → **done**: mypy wired into turbo (`"typecheck": ".venv\\Scripts\\python.exe -m mypy ."`, `apps/api/package.json`; `sqlalchemy.ext.mypy.plugin` enabled). `db/models.py` migrated `Column` → `Mapped`/`mapped_column` (SQLAlchemy 2.0) which resolved all `Column[...]` typing errors; fixed real nits surfaced by mypy (handler `None` guard in executor, sandbox `result` null guard, calculator operator `Callable` typing, DOCX `sections` annotation, base `ModelProvider.stream` iterator typing, qdrant `search`→`query_points` version compat, ingestion `points` annotation). Result: `mypy .` → `Success: no issues found in 86 source files`; `ruff check .` clean after `ruff format`. Post-rewrite live run (task-10) re-verified: `model_calls=2`, DOCX `passed`.
 

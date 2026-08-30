@@ -3,6 +3,7 @@
 Stores structured observations accumulated during a run for the MVP. This is
 an explicit, bounded structure rather than an unbounded free-form loop state.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,9 +23,7 @@ class Memory:
 
     def observations_text(self, source: str | None = None) -> str:
         items = (
-            [o for o in self.observations if o["source"] == source]
-            if source
-            else self.observations
+            [o for o in self.observations if o["source"] == source] if source else self.observations
         )
         parts = []
         for i, o in enumerate(items, 1):

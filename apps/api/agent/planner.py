@@ -4,6 +4,7 @@ For the MVP this uses deterministic rules keyed on the prompt (and any detected
 document type). A model-based planner can replace `plan()` later behind the same
 signature.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -22,13 +23,29 @@ class Plan:
         return [s["id"] for s in self.steps]
 
 
-_CODE_KW = ("write a program", "write code", "python", "script", "function",
-            "calculate the required values", "implement", "test the code",
-            "coding")
-_VISION_KW = ("image", "photo", "scanned", "diagram", "p&id", "drawing",
-              "photo", "picture")
-_DOC_KW = ("document", "report", "pdf", "inspection", "ocr", "sop", "note",
-           "analyze this", "approval")
+_CODE_KW = (
+    "write a program",
+    "write code",
+    "python",
+    "script",
+    "function",
+    "calculate the required values",
+    "implement",
+    "test the code",
+    "coding",
+)
+_VISION_KW = ("image", "photo", "scanned", "diagram", "p&id", "drawing", "photo", "picture")
+_DOC_KW = (
+    "document",
+    "report",
+    "pdf",
+    "inspection",
+    "ocr",
+    "sop",
+    "note",
+    "analyze this",
+    "approval",
+)
 
 
 def classify(prompt: str) -> tuple[str, list[str]]:
@@ -72,8 +89,11 @@ class Planner:
             ]
         elif task_type == "multimodal":
             plan.steps = [
-                {"id": "1", "action": "read_document",
-                 "detail": "Load document unless already present"},
+                {
+                    "id": "1",
+                    "action": "read_document",
+                    "detail": "Load document unless already present",
+                },
                 {"id": "2", "action": "perform_ocr", "detail": "OCR / vision understanding"},
                 {"id": "3", "action": "extract_findings", "detail": "Extract structured findings"},
                 {"id": "4", "action": "search_knowledge", "detail": "Search local knowledge base"},

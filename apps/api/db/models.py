@@ -5,15 +5,16 @@ See AGENTS.md §28 for the required model set and relationships.
 NOTE: We never store full confidential document contents here. Files live on
 disk; the DB stores metadata, safe text summaries, and paths only.
 """
+
 from __future__ import annotations
 
 import enum
 from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy import (
     JSON,
     Boolean,
-    Column,
     DateTime,
     Enum,
     ForeignKey,
@@ -21,7 +22,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db.session import Base
 
@@ -73,11 +74,11 @@ class VerificationStatus(enum.StrEnum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(120), unique=True, index=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     tasks = relationship("Task", back_populates="user")
 
@@ -85,15 +86,17 @@ class User(Base):
 class Task(Base):
     __tablename__ = "tasks"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    title = Column(String(255), nullable=True)
-    prompt = Column(Text, nullable=False)
-    task_type = Column(Enum(TaskType), default=TaskType.UNKNOWN)
-    status = Column(Enum(TaskStatus), default=TaskStatus.RECEIVED)
-    workspace = Column(String(500), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
-    updated_at = Column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    task_type: Mapped[TaskType] = mapped_column(Enum(TaskType), default=TaskType.UNKNOWN)
+    status: Mapped[TaskStatus] = mapped_column(Enum(TaskStatus), default=TaskStatus.RECEIVED)
+    workspace: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow
+    )
 
     user = relationship("User", back_populates="tasks")
     runs = relationship("AgentRun", back_populates="task", cascade="all, delete-orphan")
@@ -102,35 +105,33 @@ class Task(Base):
 class AgentRun(Base):
     __tablename__ = "agent_runs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=False)
-    status = Column(Enum(RunStatus), default=RunStatus.RUNNING)
-    model_calls = Column(Integer, default=0)
-    selected_models = Column(JSON, default=list)
-    started_at = Column(DateTime(timezone=True), default=_utcnow)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    verification_result = Column(JSON, nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    task_id: Mapped[int] = mapped_column(Integer, ForeignKey("tasks.id"), nullable=False)
+    status: Mapped[RunStatus] = mapped_column(Enum(RunStatus), default=RunStatus.RUNNING)
+    model_calls: Mapped[int] = mapped_column(Integer, default=0)
+    selected_models: Mapped[list] = mapped_column(JSON, default=list)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    verification_result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 
     task = relationship("Task", back_populates="runs")
     steps = relationship("AgentStep", back_populates="run", cascade="all, delete-orphan")
     tool_executions = relationship(
         "ToolExecution", back_populates="run", cascade="all, delete-orphan"
     )
-    artifacts = relationship(
-        "Artifact", back_populates="run", cascade="all, delete-orphan"
-    )
+    artifacts = relationship("Artifact", back_populates="run", cascade="all, delete-orphan")
 
 
 class AgentStep(Base):
     __tablename__ = "agent_steps"
 
-    id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey("agent_runs.id"), nullable=False)
-    label = Column(String(255), nullable=False)
-    detail = Column(Text, nullable=True)
-    status = Column(String(40), default="running")
-    started_at = Column(DateTime(timezone=True), default=_utcnow)
-    completed_at = Column(DateTime(timezone=True), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    run_id: Mapped[int] = mapped_column(Integer, ForeignKey("agent_runs.id"), nullable=False)
+    label: Mapped[str] = mapped_column(String(255), nullable=False)
+    detail: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(40), default="running")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     run = relationship("AgentRun", back_populates="steps")
 
@@ -138,55 +139,59 @@ class AgentStep(Base):
 class Document(Base):
     __tablename__ = "documents"
 
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
-    filename = Column(String(255), nullable=False)
-    stored_path = Column(String(500), nullable=False)
-    mime_type = Column(String(120), nullable=True)
-    content_type = Column(String(40), default="unknown")  # text | scanned | image ...
-    text_preview = Column(Text, nullable=True)  # safe, truncated summary
-    page_count = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    task_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("tasks.id"), nullable=True)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    stored_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    mime_type: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    content_type: Mapped[str] = mapped_column(String(40), default="unknown")  # text|scanned|image
+    text_preview: Mapped[str | None] = mapped_column(Text, nullable=True)  # safe, truncated summary
+    page_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
 
 class DocumentChunk(Base):
     __tablename__ = "document_chunks"
 
-    id = Column(Integer, primary_key=True, index=True)
-    document_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
-    document_name = Column(String(255), default="")
-    page_number = Column(Integer, nullable=True)
-    section = Column(String(255), nullable=True)
-    version = Column(String(60), nullable=True)
-    classification = Column(String(60), nullable=True)
-    chunk_id = Column(String(120), nullable=True)
-    text = Column(Text, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    document_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("documents.id"), nullable=True
+    )
+    document_name: Mapped[str] = mapped_column(String(255), default="")
+    page_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    section: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    version: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    classification: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    chunk_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class Model(Base):
     __tablename__ = "models"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(120), unique=True, index=True, nullable=False)
-    provider = Column(String(60), default="ollama")
-    capabilities = Column(JSON, default=list)
-    context_length = Column(Integer, nullable=True)
-    vision_support = Column(Boolean, default=False)
-    tool_support = Column(Boolean, default=False)
-    enabled = Column(Boolean, default=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    provider: Mapped[str] = mapped_column(String(60), default="ollama")
+    capabilities: Mapped[list] = mapped_column(JSON, default=list)
+    context_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    vision_support: Mapped[bool] = mapped_column(Boolean, default=False)
+    tool_support: Mapped[bool] = mapped_column(Boolean, default=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
 class ToolExecution(Base):
     __tablename__ = "tool_executions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey("agent_runs.id"), nullable=False)
-    tool_name = Column(String(120), nullable=False)
-    status = Column(Enum(ToolResultStatus), default=ToolResultStatus.SUCCESS)
-    risk_level = Column(String(40), nullable=True)
-    started_at = Column(DateTime(timezone=True), default=_utcnow)
-    duration_ms = Column(Integer, nullable=True)
-    note = Column(String(500), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    run_id: Mapped[int] = mapped_column(Integer, ForeignKey("agent_runs.id"), nullable=False)
+    tool_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[ToolResultStatus] = mapped_column(
+        Enum(ToolResultStatus), default=ToolResultStatus.SUCCESS
+    )
+    risk_level: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     run = relationship("AgentRun", back_populates="tool_executions")
 
@@ -194,15 +199,17 @@ class ToolExecution(Base):
 class Artifact(Base):
     __tablename__ = "artifacts"
 
-    id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, ForeignKey("agent_runs.id"), nullable=False)
-    name = Column(String(255), nullable=False)
-    kind = Column(String(40), nullable=True)  # docx | xlsx | pptx | pdf | txt | code
-    stored_path = Column(String(500), nullable=False)
-    verification_status = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    run_id: Mapped[int] = mapped_column(Integer, ForeignKey("agent_runs.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    kind: Mapped[str | None] = mapped_column(
+        String(40), nullable=True
+    )  # docx|xlsx|pptx|pdf|txt|code
+    stored_path: Mapped[str] = mapped_column(String(500), nullable=False)
+    verification_status: Mapped[VerificationStatus] = mapped_column(
         Enum(VerificationStatus), default=VerificationStatus.PENDING
     )
-    created_at = Column(DateTime(timezone=True), default=_utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     run = relationship("AgentRun", back_populates="artifacts")
 
@@ -210,15 +217,15 @@ class Artifact(Base):
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    task_id = Column(Integer, nullable=True)
-    user_id = Column(Integer, nullable=True)
-    timestamp = Column(DateTime(timezone=True), default=_utcnow)
-    action = Column(String(120), nullable=False)
-    model_selected = Column(String(120), nullable=True)
-    tool_name = Column(String(120), nullable=True)
-    tool_result_status = Column(String(40), nullable=True)
-    documents_accessed = Column(String(500), nullable=True)
-    artifact_generated = Column(String(250), nullable=True)
-    verification_status = Column(String(40), nullable=True)
-    detail = Column(String(500), nullable=True)  # non-sensitive metadata only
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    task_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    action: Mapped[str] = mapped_column(String(120), nullable=False)
+    model_selected: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tool_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    tool_result_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    documents_accessed: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    artifact_generated: Mapped[str | None] = mapped_column(String(250), nullable=True)
+    verification_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    detail: Mapped[str | None] = mapped_column(String(500), nullable=True)  # non-sensitive only

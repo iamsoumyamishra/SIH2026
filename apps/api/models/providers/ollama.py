@@ -4,6 +4,7 @@ Communicates with the LOCAL Ollama instance only. All inference, embeddings,
 and model listing happen against http://localhost:11434 (OLLAMA_BASE_URL).
 No data ever leaves the machine.
 """
+
 from __future__ import annotations
 
 import json

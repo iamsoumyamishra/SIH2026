@@ -3,6 +3,7 @@
 Records task/model/tool/document/artifact/verification events. Never logs
 passwords, API keys, secrets, or full confidential document contents.
 """
+
 from __future__ import annotations
 
 from typing import Any

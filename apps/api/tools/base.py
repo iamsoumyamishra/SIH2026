@@ -3,6 +3,7 @@
 Every tool declares name, description, input/output schema, permissions and
 risk level (AGENTS.md §13). Tools must be registered in the ToolRegistry.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

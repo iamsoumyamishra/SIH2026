@@ -1,4 +1,5 @@
 """Code execution tools. All execution happens inside the Docker sandbox."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -44,8 +45,7 @@ class RunTestsTool(_CodeMixin, ToolBase):
     risk_level = "high"
     input_schema = {
         "type": "object",
-        "properties": {"code": {"type": "string"},
-                       "tests": {"type": "string"}},
+        "properties": {"code": {"type": "string"}, "tests": {"type": "string"}},
     }
 
     def __init__(self, manager: SandboxManager | None = None) -> None:

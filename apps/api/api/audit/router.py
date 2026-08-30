@@ -2,6 +2,7 @@
 
 Returns audit trails by task or user with a safe, non-sensitive projection.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query

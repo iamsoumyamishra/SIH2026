@@ -1,4 +1,5 @@
 """Application configuration loaded from environment variables."""
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -12,9 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent  # apps/api
 class Settings(BaseSettings):
     """Central, env-driven configuration for the API."""
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # Security
     jwt_secret: str = "change-me-to-a-long-random-secret"

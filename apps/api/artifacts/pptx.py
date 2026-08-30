@@ -1,4 +1,5 @@
 """PPTX artifact generation using python-pptx."""
+
 from __future__ import annotations
 
 from pathlib import Path

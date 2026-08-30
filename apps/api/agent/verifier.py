@@ -4,6 +4,7 @@ The verifier is intentionally deterministic: it checks real conditions (file
 exists, opens, required sections/fields present, code executed + test results)
 rather than trusting that generation "looked right".
 """
+
 from __future__ import annotations
 
 import re
@@ -73,9 +74,7 @@ class Verifier:
                 result.add_check(
                     f"field:{field}",
                     bool(full_text.strip())
-                    and any(
-                        field.lower() in p.lower() or p.strip() for p in paragraphs
-                    ),
+                    and any(field.lower() in p.lower() or p.strip() for p in paragraphs),
                     "field presence",
                 )
 

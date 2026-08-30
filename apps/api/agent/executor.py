@@ -9,6 +9,7 @@ This design keeps the agent decoupled from concrete implementations: new actions
 are added by registering a handler, and none of them touch Ollama/core services
 directly except through the abstractions.
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -32,9 +33,7 @@ class ActionHandler:
     def has(self, action: str) -> bool:
         return action in self._handlers
 
-    def get(
-        self, action: str
-    ) -> Callable[[AgentContext, str], Awaitable[Any]] | None:
+    def get(self, action: str) -> Callable[[AgentContext, str], Awaitable[Any]] | None:
         return self._handlers.get(action)
 
 
@@ -78,6 +77,7 @@ class Executor:
                 continue
 
             fn = self.handlers.get(action)
+            assert fn is not None  # guarded by handlers.has(action) above
             try:
                 result = await fn(context, detail)
                 context.tool_results[action] = result
@@ -88,6 +88,5 @@ class Executor:
             context.complete_step(detail or action)
 
         return all(
-            r is not None and (not isinstance(r, dict) or r.get("ok", True))
-            for r in results
+            r is not None and (not isinstance(r, dict) or r.get("ok", True)) for r in results
         )

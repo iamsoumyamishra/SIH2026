@@ -4,6 +4,7 @@ Holds immutable task inputs plus mutable execution artifacts (steps, selected
 model, tool results, documents, artifacts) that the orchestrator/progress
 streaming layer consumes.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

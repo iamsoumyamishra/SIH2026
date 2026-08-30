@@ -2,6 +2,7 @@
 
 Lists configured local models and their live availability against Ollama.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends

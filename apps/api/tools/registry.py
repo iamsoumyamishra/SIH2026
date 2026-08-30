@@ -3,6 +3,7 @@
 The agent can only call tools registered here, and each call is checked against
 a permission policy before dispatch (AGENTS.md §14, §13).
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable

@@ -1,4 +1,5 @@
 """RAG retrieval: embed query → search store → return chunks with metadata."""
+
 from __future__ import annotations
 
 from typing import Any

@@ -2,6 +2,7 @@
 
 Used by OCR and the vision pipeline. No cloud services are used.
 """
+
 from __future__ import annotations
 
 import base64

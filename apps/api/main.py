@@ -2,6 +2,7 @@
 
 Wires all API routers behind JWT auth and streams live agent progress via SSE.
 """
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager

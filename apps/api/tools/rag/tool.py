@@ -1,4 +1,5 @@
 """RAG tools: search the local knowledge base and ingest documents."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -73,9 +74,7 @@ class IngestKnowledgeTool(_RagMixin, ToolBase):
         doc_id = kwargs.get("document_id") or target.stem
         doc_name = kwargs.get("document_name") or target.name
         try:
-            result = self.ingestion.ingest_text(
-                text, document_id=doc_id, document_name=doc_name
-            )
+            result = self.ingestion.ingest_text(text, document_id=doc_id, document_name=doc_name)
             return {"ok": True, **result}
         except Exception as exc:  # noqa: BLE001
             return {"ok": False, "error": f"Ingestion failed: {exc}"}

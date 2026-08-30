@@ -3,6 +3,7 @@
 The agent cannot reference arbitrary host paths — only relative paths inside the
 task's workspace (input/working/output directories).
 """
+
 from __future__ import annotations
 
 from pathlib import Path

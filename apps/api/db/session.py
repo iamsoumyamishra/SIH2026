@@ -1,4 +1,5 @@
 """SQLAlchemy engine, session factory, and base declarative class."""
+
 from __future__ import annotations
 
 from sqlalchemy import create_engine

@@ -1,4 +1,5 @@
 """Explicit agent lifecycle states (AGENTS.md §4.4, §11)."""
+
 from __future__ import annotations
 
 import enum
@@ -58,9 +59,7 @@ class StateMachine:
         if self._state == target:
             return self._state
         if not self.can_transition(target):
-            raise IllegalTransitionError(
-                f"Illegal transition: {self._state} -> {target}"
-            )
+            raise IllegalTransitionError(f"Illegal transition: {self._state} -> {target}")
         self._state = target
         return self._state
 

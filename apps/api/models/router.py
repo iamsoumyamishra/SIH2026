@@ -3,6 +3,7 @@
 Maps a task (type, capabilities, vision, etc.) to the best configured model.
 No ML is involved — this is intentionally simple per AGENTS.md §9.
 """
+
 from __future__ import annotations
 
 from models.registry import ModelRegistry
@@ -25,8 +26,15 @@ class ModelRouter:
             )
 
         code_keywords = (
-            "python", "code", "program", "script", "function", "algorithm",
-            "calculate the required values", "write a program", "implement",
+            "python",
+            "code",
+            "program",
+            "script",
+            "function",
+            "algorithm",
+            "calculate the required values",
+            "write a program",
+            "implement",
         )
         if request.task_type == TaskKind.CODING or (
             request.prompt and _has_any(request.prompt, code_keywords)

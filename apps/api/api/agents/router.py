@@ -2,6 +2,7 @@
 
 Reports persisted runs, per-step progress, tool executions, and artifacts.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException

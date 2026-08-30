@@ -5,6 +5,7 @@
   "scripts": {
     "dev": ".venv\\Scripts\\python.exe -m uvicorn main:app --port 8000",
     "test": ".venv\\Scripts\\python.exe -m pytest -q",
-    "lint": ".venv\\Scripts\\python.exe -m ruff check ."
+    "lint": ".venv\\Scripts\\python.exe -m ruff check .",
+    "typecheck": ".venv\\Scripts\\python.exe -m mypy ."
   }
 }

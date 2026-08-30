@@ -3,6 +3,7 @@
 These create real, verifiable files (DOCX priority, plus XLSX/PPTX/PDF/TXT) in
 the task's output directory. See artifacts/ for the concrete generators.
 """
+
 from __future__ import annotations
 
 import json

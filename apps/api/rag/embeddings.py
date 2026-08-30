@@ -4,6 +4,7 @@ The embedding model is called through the local Ollama endpoint only. Calls are
 synchronous so they can be used from both sync (CLI/tests) and async (API)
 contexts without event-loop conflicts. All communication stays local.
 """
+
 from __future__ import annotations
 
 import httpx
