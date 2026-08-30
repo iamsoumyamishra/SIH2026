@@ -24,7 +24,7 @@
 | Repo tooling (pnpm + Turborepo) | `✓` |
 | Backend (FastAPI) | `✓` |
 | Agent core | `✓` |
-| Model layer | `△` (models being pulled) |
+| Model layer | `✓` |
 | Multimodal / OCR | `△` (RapidOCR swap in progress) |
 | RAG | `△` (local backend verified; qdrant pending) |
 | Tools + Artifacts | `✓` |
@@ -51,7 +51,7 @@
 - [x] Multi-step execution works — `✓`
 - [x] Tool calling works — `✓`
 - [x] Agent state works — `✓`
-- [x] Verification works — `✓` (`approval_note.docx` verified live)
+- [x] Verification works — `✓` (`approval_note.docx` verified live; task-6 run logged `model_calls=2`)
 - [x] Retry/replanning is bounded — `✓` (`MAX_AGENT_ITERATIONS=12`)
 
 ### Multimodal
@@ -87,7 +87,7 @@
 ### Sovereignty
 - [x] No external AI calls — `✓` (all local)
 - [x] No cloud uploads — `✓`
-- [x] Local inference works — `△` (embedding works; chat models pending pull)
+- [x] Local inference works — `✓` (embeddings + all role models verified via live agent run)
 - [ ] Network status is demonstrable — `△` (endpoint present; compose-stack demo pending)
 
 ### Demo
@@ -118,11 +118,15 @@
 
 ## Open Items (actionable)
 
-1. **Verify API model registration** — confirm `/api/models` + live agent run uses real models (not deterministic path).
-2. **Compose stack up** — start postgres/qdrant/minio/ollama/api/web.
-3. **Full-stack config** — flip `DATABASE_BACKEND=postgresql` + `RAG_BACKEND=qdrant`, validate.
-4. **Sandbox live validation** — pull base image, run `execute_code` in a real container.
-5. **mypy** — wire into turbo + make pass.
+1. **Compose stack up** — start postgres/qdrant/minio/ollama/api/web.
+2. **Full-stack config** — flip `DATABASE_BACKEND=postgresql` + `RAG_BACKEND=qdrant`, validate.
+3. **Sandbox live validation** — pull base image, run `execute_code` in a real container.
+4. **mypy** — wire into turbo + make pass.
+
+> **Resolved 2026-08-30:** API model registration + live agent run now uses real models —
+> `/api/models` reports all roles `available`; task-6 inspection→approval run selected
+> `qwen2.5:3b`, logged `model_calls=2` (real inference wired into `analyze_findings` /
+> `generate_code` handlers in `services/task_service.py` via `ModelProvider`), verified DOCX.
 
 ---
 
@@ -140,4 +144,5 @@
 - **2026-08-29** — Initial tracker; captured current state, pnpm/turbo migration complete, OCR switch to RapidOCR approved (PaddleOCR impractical on this Windows box), small-model set agreed for 4GB VRAM, mypy to be wired in. `apps/web/Dockerfile` found to be missing (compose web broken).
 - **2026-08-29 (B1/B2)** — Models pulled: general/coding/vision/embedding all installed and verified inference (vision read MC-1042 from a rendered page). OCR switched PaddleOCR → RapidOCR (`multimodal/ocr.py`); verified OCR extraction on rendered PDF page.
 - **2026-08-30** — Docs milestone: `PRD.md` and `PPT_CONTENT.md` (incl. full architecture/workflow appendix) authored; `AGENTS.md` minimized to ~500 words (idea, architecture, tech stack, docs-sync rule). `.gitignore` hardened (`.turbo/`, `*.log`, `*.err`, `graphify-out/`); junk removed from index; **initial git commit created** (`8601541`). `apps/web/Dockerfile` confirmed present.
+- **2026-08-30 (runtime)** — Open item #1 → **verified**: real (non-deterministic) model inference wired into the agent handler layer (`services/task_service.py`: `_generate` → `ModelProvider.generate`, `_model_analysis`, `_model_code`; LLM-fallback keeps runs resilient). Live task-6 (inspection PDF → approval note) reports `model_calls=2`, `selected_models=["qwen2.5:3b"]`, DOCX verified `passed` (`file_exists`, `sections_exist`). 42/42 pytest green; ruff clean on touched file.
 

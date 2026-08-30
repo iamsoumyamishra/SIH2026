@@ -30,6 +30,8 @@ from db.models import (
     VerificationStatus,
 )
 from db.session import SessionLocal
+from models.registry import ModelRegistry
+from models.schemas import GenerationRequest
 from multimodal.pipeline import DocumentPipeline
 from rag.retrieval import RetrievalService
 from security.audit import AuditLogger
@@ -54,11 +56,13 @@ class TaskService:
         bus: EventBus | None = None,
         pipeline: DocumentPipeline | None = None,
         retrieval: RetrievalService | None = None,
+        registry: ModelRegistry | None = None,
     ) -> None:
         self._db = db
         self.bus = bus or get_event_bus()
         self.pipeline = pipeline or DocumentPipeline()
         self.retrieval = retrieval or RetrievalService()
+        self.registry = registry or ModelRegistry()
 
     def _db_session(self):
         return self._db if self._db is not None else SessionLocal()
@@ -307,8 +311,9 @@ class TaskService:
         ah.register("search_knowledge", search_knowledge)
 
         async def analyze_findings(context, detail):
-            context.tool_results["analysis"] = self._analyze(context)
-            return {"ok": True, "analysis": context.tool_results["analysis"]}
+            analysis = await self._model_analysis(context)
+            context.tool_results["analysis"] = analysis
+            return {"ok": True, "analysis": analysis}
         ah.register("analyze_findings", analyze_findings)
         ah.register("analyze", analyze_findings)
         ah.register("answer", analyze_findings)
@@ -323,6 +328,9 @@ class TaskService:
             machine_id = self._machine_id(context)
             date = "2026-08-20"
             recommendation = self._recommendation(findings)
+            analysis = context.tool_results.get("analysis", "")
+            if analysis and ("approve" in analysis.lower() or "corrective" in analysis.lower()):
+                recommendation = analysis.strip().splitlines()[0]
             out = ws.dir("output") / "approval_note.docx"
             make_approval_note(
                 out, machine_id=machine_id, date=date,
@@ -356,8 +364,9 @@ class TaskService:
 
         # ── code handlers ────────────────────────────────────
         async def generate_code(context, detail):
-            context.tool_results["code"] = self._default_code(context.prompt)
-            return {"ok": True, "code": context.tool_results["code"]}
+            code = await self._model_code(context)
+            context.tool_results["code"] = code
+            return {"ok": True, "code": code}
         ah.register("generate_code", generate_code)
 
         async def execute_code(context, detail):
@@ -378,6 +387,71 @@ class TaskService:
         return ah
 
     # ── deterministic helpers ────────────────────────────────
+    async def _generate(
+        self,
+        context: AgentContext,
+        prompt: str,
+        system: str | None = None,
+        max_tokens: int | None = None,
+    ) -> str:
+        """Invoke the selected model through the provider abstraction.
+
+        Records every real inference call on context.model_calls. Returns ''
+        (caller falls back to a deterministic path) when no model is selected
+        or the provider is unreachable — inference is never fatal.
+        """
+        model = context.selected_model_name
+        if not model:
+            return ""
+        try:
+            response = await self.registry.provider.generate(
+                GenerationRequest(
+                    model=model,
+                    prompt=prompt,
+                    system=system,
+                    max_tokens=max_tokens,
+                    temperature=0.2,
+                )
+            )
+            context.model_calls += 1
+            return response.text.strip()
+        except Exception as exc:  # noqa: BLE001
+            context.model_reason = f"LLM call failed, used fallback: {exc}"
+            return ""
+
+    async def _model_analysis(self, context) -> str:
+        findings = context.tool_results.get("findings", [])
+        sop = context.tool_results.get("sop_results", {}).get("results", [])
+        lines = [
+            f"- {f.get('item')} ({f.get('status')}): {f.get('remark') or 'no remark'}"
+            for f in findings
+        ] or ["(no findings parsed)"]
+        sop_refs = [f"{r.get('document_name')} §{r.get('section') or '?'}" for r in sop]
+        prompt = (
+            "You are a maintenance inspection analyst. Below are extracted findings "
+            "and relevant maintenance SOP references.\n\n"
+            f"Inspection findings:\n{chr(10).join(lines)}\n\n"
+            f"SOP references:\n{chr(10).join(sop_refs) if sop_refs else '(none retrieved)'}\n\n"
+            "Write a concise approval-note analysis (1-3 sentences): how many items "
+            "passed/failed, whether corrective maintenance is required, and the "
+            "recommendation (approve, or corrective maintenance required)."
+        )
+        text = await self._generate(
+            context, prompt, system="You are a concise engineering analyst.", max_tokens=300
+        )
+        return text or self._analyze(context)
+
+    async def _model_code(self, context) -> str:
+        prompt = (
+            "Write a complete, standalone Python program that satisfies this request. "
+            "Return only the code, no markdown fences, no explanations.\n\n"
+            f"Request: {context.prompt}"
+        )
+        text = await self._generate(
+            context, prompt, system="You are a senior Python engineer.", max_tokens=1000
+        )
+        return text or self._default_code(context.prompt)
+
     @staticmethod
     def _parse_findings(text: str) -> list[dict]:
         findings: list[dict] = []
