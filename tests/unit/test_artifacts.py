@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from agent.verifier import Verifier
 from artifacts.docx import generate_docx, make_approval_note
+from docx import Document
 
 
 def test_generate_docx_creates_valid_file(tmp_path):
@@ -49,3 +50,22 @@ def test_make_approval_note(tmp_path):
     verifier = Verifier()
     result = verifier.verify_docx_file(target, required_paragraphs=["Machine ID: MC-1042"])
     assert result.passed is True
+
+
+def test_make_approval_note_inconclusive_never_approves(tmp_path):
+    target = tmp_path / "inconclusive.docx"
+    make_approval_note(
+        target,
+        machine_id="",
+        date="2026-08-20",
+        findings=[],
+        sop_references=["No maintenance SOP retrieved from the knowledge base."],
+        recommendation="Manual review required: no inspection items were identified.",
+        inconclusive=True,
+    )
+    doc = Document(str(target))
+    text = "\n".join(p.text for p in doc.paragraphs)
+    assert "REVIEW REQUIRED" in text
+    assert "APPROVED" not in text
+    assert "MC-UNKNOWN" not in text
+    assert "Not identified in the document" in text

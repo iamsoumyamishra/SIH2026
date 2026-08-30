@@ -53,16 +53,39 @@ def make_approval_note(
     findings: list[dict],
     sop_references: list[str],
     recommendation: str,
+    inconclusive: bool = False,
 ) -> Path:
-    """Generate a standard approval note from inspection findings."""
+    """Generate a standard approval note from inspection findings.
+
+    `inconclusive=True` means no findable inspection items — the note must NOT
+    fabricate an approval; it says review is required instead.
+    """
     ok = [f for f in findings if f.get("status", "").upper() == "PASS"]
     failed = [f for f in findings if f.get("status", "").upper() == "FAIL"]
+
+    if inconclusive:
+        verdict = (
+            "REVIEW REQUIRED — no inspection items were extracted from the uploaded "
+            "document, so no automated decision can be issued. Confirm the source "
+            "document is an inspection report and re-submit."
+        )
+    elif failed:
+        verdict = (
+            "CONDITIONALLY APPROVED — corrective maintenance on the failed items and "
+            "re-inspection are required before return to service, per the referenced "
+            "maintenance SOP."
+        )
+    else:
+        verdict = "APPROVED for continued service."
+
+    machine_label = machine_id or "Not identified in the document"
+    title = f"Inspection Approval Note — {machine_id}" if machine_id else "Inspection Approval Note"
 
     sections: list[dict] = [
         {
             "heading": "Machine & Report",
             "body": [
-                f"Machine ID: {machine_id}",
+                f"Machine ID: {machine_label}",
                 f"Date of inspection: {date}",
                 f"Items inspected: {len(findings)}  (Passed: {len(ok)}, Failed: {len(failed)})",
             ],
@@ -81,12 +104,7 @@ def make_approval_note(
         },
         {
             "heading": "Approval Status",
-            "body": (
-                "APPROVED for return to service after corrective maintenance "
-                "and re-inspection, per maintenance SOP."
-                if failed
-                else "APPROVED for continued service."
-            ),
+            "body": verdict,
         },
     ]
-    return generate_docx(path, title=f"Inspection Approval Note — {machine_id}", sections=sections)
+    return generate_docx(path, title=title, sections=sections)

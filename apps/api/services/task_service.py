@@ -333,15 +333,26 @@ class TaskService:
             ws = context.workspace_obj
             findings = context.tool_results.get("findings", [])
             sop = context.tool_results.get("sop_results", {}).get("results", [])
-            sop_refs = [f"{r.get('document_name')} §{r.get('section') or '?'}" for r in sop] or [
-                "Maintenance SOP"
-            ]
-            machine_id = self._machine_id(context)
+            sop_refs = [f"{r.get('document_name')} §{r.get('section') or '?'}" for r in sop]
+            if not sop_refs:
+                sop_refs = ["No maintenance SOP retrieved from the knowledge base."]
+            machine_id = self._machine_id(context) or ""
             date = "2026-08-20"
-            recommendation = self._recommendation(findings)
-            analysis = context.tool_results.get("analysis", "")
-            if analysis and ("approve" in analysis.lower() or "corrective" in analysis.lower()):
-                recommendation = analysis.strip().splitlines()[0]
+            inconclusive = not findings
+            if inconclusive:
+                recommendation = (
+                    "Manual review required: no inspection items were identified in the "
+                    "uploaded document (it may not be an inspection report). Re-submit a "
+                    "valid inspection report with a machine ID and a PASS/FAIL checklist "
+                    "for automated review."
+                )
+            else:
+                recommendation = self._recommendation(findings)
+                analysis = context.tool_results.get("analysis", "")
+                if analysis and (
+                    "approve" in analysis.lower() or "corrective" in analysis.lower()
+                ):
+                    recommendation = analysis.strip().splitlines()[0]
             out = ws.dir("output") / "approval_note.docx"
             make_approval_note(
                 out,
@@ -350,6 +361,7 @@ class TaskService:
                 findings=findings,
                 sop_references=sop_refs,
                 recommendation=recommendation,
+                inconclusive=inconclusive,
             )
             context.artifacts.append(
                 {"name": "approval_note.docx", "kind": "docx", "path": str(out)}
@@ -718,11 +730,12 @@ class TaskService:
 
     @staticmethod
     def _machine_id(context) -> str:
+        """Return the machine ID found in the extracted document text, or ''."""
         doc = context.tool_results.get("extracted_document", {}).get("text", "")
         for line in doc.splitlines():
             if "machine" in line.lower() and ":" in line:
                 return line.split(":", 1)[1].strip()
-        return "MC-UNKNOWN"
+        return ""
 
     @staticmethod
     def _recommendation(findings: list[dict]) -> str:
