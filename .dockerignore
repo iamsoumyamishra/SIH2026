@@ -1,0 +1,21 @@
+# Docker build context is the monorepo root (used by apps/web and apps/api).
+node_modules
+**/node_modules
+**/.next
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.turbo
+**/.mypy_cache
+data
+**/data
+apps/api/workspaces
+**/workspaces
+*.db
+*.sqlite3
+*.log
+.env
+git
+.git

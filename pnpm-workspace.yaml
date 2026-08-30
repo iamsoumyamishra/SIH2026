@@ -1,0 +1,6 @@
+packages:
+  - apps/*
+
+# Flat node_modules layout: avoids Windows symlink EPERM issues with
+# frameworks that bundle/copy dependencies (e.g. Next.js standalone output).
+nodeLinker: hoisted

@@ -1,0 +1,14 @@
+# Model Registry for the Sovereign AI Workbench.
+# Assign a role to an Ollama model name. Leave a role empty ("") to disable it.
+# Model names may also be overridden via environment variables:
+#   OLLAMA_GENERAL_MODEL, OLLAMA_REASONING_MODEL, OLLAMA_CODING_MODEL,
+#   OLLAMA_VISION_MODEL, OLLAMA_EMBEDDING_MODEL
+#
+# For a deterministic rule-based router (see models/router.py).
+
+roles:
+  general: "qwen2.5:3b"        # small general model (4GB VRAM)
+  reasoning: "qwen2.5:3b"      # small reasoning model
+  coding: "qwen2.5-coder:3b"   # small coding model
+  vision: "qwen2.5vl:3b"       # small vision-language model
+  embedding: "nomic-embed-text"

@@ -1,0 +1,102 @@
+# ├── Tournament Configuration For the Sovereign AI Workbench
+# ─────────────────────────────────────────────────────────────
+name: sovereign-ai-workbench
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: saw-api
+    env_file: .env
+    environment:
+      - DATABASE_BACKEND=postgresql
+      - RAG_BACKEND=qdrant
+      - POSTGRES_HOST=postgres
+      - QDRANT_URL=http://qdrant:6333
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - STORAGE_ROOT=/app/workspaces
+    volumes:
+      - workspaces:/app/workspaces
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: saw-web
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: saw-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: saw-postgres
+    env_file: .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: saw-qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: saw-minio
+    command: server /data --console-address ":9001"
+    env_file: .env
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-saw}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-change-me}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    restart: unless-stopped
+
+volumes:
+  workspaces:
+  ollama_data:
+  postgres_data:
+  qdrant_data:
+  minio_data:

@@ -1,0 +1,31 @@
+MAINTENANCE SOP - MACHINE MC-1042 SERIES
+Version 2.1
+Department: Maintenance Engineering
+Classification: Internal
+
+Section 4.2 - Bearing Vibration Limits
+Bearing vibration must not exceed 4.5 mm/s (RMS) under normal operating load.
+If measured vibration exceeds this threshold, the bearing is considered at
+risk. Corrective maintenance must be scheduled and the machine de-rated until
+re-inspection passes.
+
+Section 4.3 - Coupling Alignment
+Coupling alignment offset must remain within 0.5 mm. Misalignment beyond this
+limit requires realignment before the equipment returns to service.
+
+Section 4.4 - Belt Tension
+Belt tension must be checked and maintained within the manufacturer's specified
+range. A tension below the minimum requires retightening before operation.
+
+Section 5.0 - Corrective Maintenance Triggers
+The following conditions require corrective (unscheduled) maintenance:
+- Vibration above limit
+- Alignment offset out of tolerance
+- Oil or coolant outside operating range
+- Belt tension below minimum
+
+Section 6.0 - Re-Inspection
+After corrective maintenance, the machine must be re-inspected against all
+failed checklist items before approval to return to service is granted. An
+approval note must be generated, verified, and filed with the maintenance
+record.

@@ -1,0 +1,20 @@
+{
+  "name": "sovereign-ai-workbench",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sovereign On-Premise Agentic AI Workbench using Open-Weight Multimodal LLMs",
+  "packageManager": "pnpm@11.21.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "dev:web": "turbo run dev --filter @sovereign/web",
+    "dev:api": "turbo run dev --filter @sovereign/api",
+    "build:web": "turbo run build --filter @sovereign/web"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.6"
+  }
+}
